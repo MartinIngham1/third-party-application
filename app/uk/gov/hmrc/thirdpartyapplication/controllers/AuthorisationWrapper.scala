@@ -42,21 +42,18 @@ trait AuthorisationWrapper {
   val applicationService: ApplicationService
   val authConfig: AuthConfig
 
-  def requiresRole(): ActionBuilder[Request] = {
+  def authenticated(): ActionBuilder[Request] = {
     Action andThen AuthenticatedAction()
   }
 
-  def requiresRoleFor(accessTypes: AccessType*): ActionBuilder[Request] =
-    Action andThen PayloadBasedApplicationTypeFilter(accessTypes)
-
-  def requiresRoleFor(uuid: UUID, accessTypes: AccessType*): ActionBuilder[Request] =
-    Action andThen RepositoryBasedApplicationTypeFilter(uuid, failOnAccessTypeMismatch = false, accessTypes)
+  def requiresApplicationWithAccessTypes(accessTypes: AccessType*): ActionBuilder[Request] =
+    Action andThen PayloadBasedApplicationTypeFilter(accessTypes) andThen AuthenticatedAction()
 
   def requiresGatekeeperForStandardApplications(uuid: UUID): ActionBuilder[Request] =
-    Action andThen RepositoryBasedApplicationTypeFilter(uuid, failOnAccessTypeMismatch = true, Seq(STANDARD))
+    Action andThen RepositoryBasedApplicationTypeFilter(uuid, failOnAccessTypeMismatch = true, Seq(STANDARD)) andThen AuthenticatedAction()
 
   def requiresGatekeeperForPrivilegedOrRopcApplications(uuid: UUID): ActionBuilder[Request] =
-    Action andThen RepositoryBasedApplicationTypeFilter(uuid, failOnAccessTypeMismatch = false, Seq(PRIVILEGED, ROPC))
+    Action andThen RepositoryBasedApplicationTypeFilter(uuid, failOnAccessTypeMismatch = false, Seq(PRIVILEGED, ROPC)) andThen AuthenticatedAction()
 
   private case class AuthenticatedAction() extends AuthenticationFilter() {
     def filter[A](input: Request[A]) = authenticate(input)
@@ -98,7 +95,7 @@ trait AuthorisationWrapper {
 
     override def filter[A](request: Request[A]) =
       deriveAccessType(request) flatMap {
-        case Some(accessType) if accessTypes.contains(accessType) => authenticate(request)
+        case Some(accessType) if accessTypes.contains(accessType) => Future.successful(Some(Results.Ok)) //authenticate(request) // TODO - Not 100% sure about this..
         case Some(_) if failOnAccessTypeMismatch =>
           Future.successful(Some(Results.Forbidden(JsErrorResponse(APPLICATION_NOT_FOUND, "application access type mismatch"))))
 

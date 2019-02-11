@@ -27,9 +27,10 @@ import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import play.api.libs.json.{JsValue, Json}
-import play.api.mvc.Result
+import play.api.mvc.{Result, Results}
 import play.api.test.FakeRequest
 import play.mvc.Http.HeaderNames
+import uk.gov.hmrc.auth.core.retrieve.Retrieval
 import uk.gov.hmrc.http.{HeaderCarrier, NotFoundException}
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 import uk.gov.hmrc.thirdpartyapplication.connector.{AuthConfig, AuthConnector}
@@ -46,7 +47,7 @@ import uk.gov.hmrc.time.DateTimeUtils
 import unit.uk.gov.hmrc.thirdpartyapplication.helpers.AuthSpecHelpers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.Future.{apply => _, _}
 
 class ApplicationControllerSpec extends UnitSpec with ScalaFutures with MockitoSugar with WithFakeApplication with ApplicationStateUtil {
@@ -1242,6 +1243,8 @@ class ApplicationControllerSpec extends UnitSpec with ScalaFutures with MockitoS
       when(underTest.applicationService.fetch(applicationId)).thenReturn(Some(aNewApplicationResponse()))
       when(mockSubscriptionService.removeSubscriptionForApplication(mockEq(applicationId), any[APIIdentifier])(any[HeaderCarrier]))
         .thenReturn(failed(new RuntimeException("Expected test failure")))
+
+      when(mockAuthConnector.authorise(any(),any[Retrieval[Any]])(any[HeaderCarrier], any[ExecutionContext])).thenReturn(Future.successful(Results.Ok))
 
       val result = await(underTest.removeSubscriptionForApplication(applicationId, "some-context", "1.0")(request))
 

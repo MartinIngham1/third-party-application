@@ -52,7 +52,7 @@ class ApplicationController @Inject()(val applicationService: ApplicationService
     super.hc.withExtraHeaders(extraHeaders: _*)
   }
 
-  def create = requiresRoleFor(PRIVILEGED, ROPC).async(BodyParsers.parse.json) { implicit request =>
+  def create = requiresApplicationWithAccessTypes(PRIVILEGED, ROPC).async(BodyParsers.parse.json) { implicit request =>
     withJsonBody[CreateApplicationRequest] { application =>
       applicationService.create(application).map {
         result => Created(toJson(result))
@@ -71,7 +71,7 @@ class ApplicationController @Inject()(val applicationService: ApplicationService
     }
   }
 
-  def updateRateLimitTier(applicationId: UUID) = requiresRole().async(BodyParsers.parse.json) { implicit request =>
+  def updateRateLimitTier(applicationId: UUID) = authenticated().async(BodyParsers.parse.json) { implicit request =>
     withJsonBody[UpdateRateLimitTierRequest] { updateRateLimitTierRequest =>
       Try(RateLimitTier withName updateRateLimitTierRequest.rateLimitTier.toUpperCase()) match {
         case Success(rateLimitTier) =>
